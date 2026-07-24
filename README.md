@@ -45,9 +45,9 @@ Acesse o frontend em `http://localhost:5173` e a API em `http://localhost:8000/d
 
 | Usuário | Senha | Perfil |
 |---------|-------|--------|
-| admin | 123 | Administrador |
-| recepcao | 123 | Recepcionista |
-| professor | 123 | Professor |
+| admin | *** | Administrador |
+| recepcao | *** | Recepcionista |
+| professor | *** | Professor |
 | aluno | 123 | Aluno |
 
 ## Ambiente
