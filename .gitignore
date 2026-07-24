@@ -1,0 +1,24 @@
+# Environment
+.env
+token.json
+
+# Python
+__pycache__/
+venv/
+*.pyc
+*.pyo
+
+# Database
+*.db
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
