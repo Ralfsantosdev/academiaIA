@@ -318,7 +318,10 @@ function App() {
   const [importLoading, setImportLoading] = useState(false);
 
   // Estados de Planos/Assinatura
-
+  const [planosDisponiveis, setPlanosDisponiveis] = useState([]);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [upgradeLink, setUpgradeLink] = useState(null);
+  const [upgradeMsg, setUpgradeMsg] = useState('');
 
   // Estados do Aluno (autoatendimento)
   const [studentTab, setStudentTab] = useState('aluno_treino');
@@ -434,7 +437,16 @@ function App() {
     if (activeTab === 'gerenciar_ficha' && user?.role.toLowerCase() === 'professor') {
       authService.getAlunosAll(token).then(setProfAlunosList).catch(err => console.error(err));
     }
-
+    if (activeTab === 'planos') {
+      fetch(`${API_BASE_URL}/api/v1/tenants/planos`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(r => r.json()).then(setPlanosDisponiveis).catch(() => {});
+      fetch(`${API_BASE_URL}/api/v1/tenants/status`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(r => r.json()).then(data => setTenantInfo(prev => ({...prev, ...data}))).catch(() => {});
+      setUpgradeLink(null);
+      setUpgradeMsg('');
+    }
   }, [activeTab, user]);
 
   const handleCreatePlano = async (e) => {
@@ -1044,6 +1056,7 @@ function App() {
               <div className={`menu-item ${activeTab === 'emitir_relatorios' ? 'highlight-menu' : ''}`} onClick={() => setActiveTab('emitir_relatorios')}>📊 Emitir Relatórios</div>
               <div className={`menu-item ${activeTab === 'cobrancas' ? 'highlight-menu' : ''}`} onClick={() => setActiveTab('cobrancas')}>💰 Cobranças</div>
               <div className={`menu-item ${activeTab === 'importar_base' ? 'highlight-menu' : ''}`} onClick={() => setActiveTab('importar_base')}>📥 Importar Base</div>
+              <div className={`menu-item ${activeTab === 'planos' ? 'highlight-menu' : ''}`} onClick={() => setActiveTab('planos')}>📋 Planos e Assinatura</div>
             </>
           )}
 
@@ -1565,6 +1578,90 @@ function App() {
                     )}
                   </div>
                 )}
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'planos' && (
+          <section className="glass-panel">
+            <h2 className="panel-title">📋 Planos de Assinatura</h2>
+            <p style={{ marginBottom: '1.5rem' }}>
+              {tenantInfo?.is_trial
+                ? `Seu trial termina em ${tenantInfo.trial_days_left} dias. Escolha um plano para continuar.`
+                : `Plano atual: ${tenantInfo?.plano_nome || 'Free'} — R$ ${tenantInfo?.preco_mensal || 0}/mês`}
+            </p>
+            {upgradeLink ? (
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                <p style={{ color: 'var(--success)', fontSize: '1.2rem', marginBottom: '1rem' }}>✅ Link de pagamento gerado!</p>
+                <a href={upgradeLink} target="_blank" rel="noopener noreferrer">
+                  <button style={{ background: 'var(--primary-accent)', color: '#000', padding: '1rem 2rem', fontSize: '1.1rem', width: 'auto' }}>
+                    Ir para o Pagamento
+                  </button>
+                </a>
+                <button onClick={() => setUpgradeLink(null)} style={{ background: 'transparent', border: '1px solid var(--text-muted)', color: 'var(--text-main)', marginTop: '1rem', padding: '0.5rem', width: 'auto', fontSize: '0.9rem' }}>
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
+                {planosDisponiveis.filter(p => p.slug !== 'trial' && p.slug !== 'free').map(plano => {
+                  const isCurrent = tenantInfo?.plano === plano.slug;
+                  const isUpgrade = !isCurrent && tenantInfo?.preco_mensal < plano.preco_mensal;
+                  return (
+                    <div key={plano.slug} style={{
+                      padding: '1.5rem',
+                      borderRadius: '12px',
+                      border: isCurrent ? '2px solid var(--primary-accent)' : '1px solid rgba(102,252,241,0.2)',
+                      background: isCurrent ? 'rgba(102,252,241,0.08)' : 'rgba(0,0,0,0.2)',
+                      display: 'flex', flexDirection: 'column', gap: '0.8rem'
+                    }}>
+                      <h3 style={{ color: isCurrent ? 'var(--primary-accent)' : 'var(--text-light)', fontSize: '1.4rem' }}>{plano.nome}</h3>
+                      <p style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>{plano.descricao}</p>
+                      <p style={{ fontSize: '2rem', fontWeight: 'bold', color: isCurrent ? 'var(--primary-accent)' : 'var(--text-light)' }}>
+                        R$ {plano.preco_mensal}<span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--text-muted)' }}>/mês</span>
+                      </p>
+                      <ul style={{ listStyle: 'none', padding: 0 }}>
+                        {plano.features.map((f, i) => (
+                          <li key={i} style={{ padding: '0.3rem 0', color: 'var(--text-main)', fontSize: '0.9rem' }}>✅ {f}</li>
+                        ))}
+                      </ul>
+                      {isCurrent && (
+                        <div style={{ marginTop: 'auto', textAlign: 'center', padding: '0.5rem', background: 'rgba(102,252,241,0.2)', borderRadius: '6px', color: 'var(--primary-accent)', fontWeight: 'bold' }}>
+                          Plano Atual
+                        </div>
+                      )}
+                      {isUpgrade && (
+                        <button
+                          disabled={upgradeLoading}
+                          onClick={async () => {
+                            setUpgradeLoading(true);
+                            setUpgradeMsg('');
+                            try {
+                              const token = localStorage.getItem('token');
+                              const res = await fetch(`${API_BASE_URL}/api/v1/tenants/upgrade`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                body: JSON.stringify({ plano_slug: plano.slug })
+                              });
+                              const data = await res.json();
+                              if (!res.ok) throw new Error(data.detail || 'Erro');
+                              setUpgradeLink(data.link_pagamento);
+                            } catch (err) {
+                              setUpgradeMsg('❌ ' + err.message);
+                            } finally {
+                              setUpgradeLoading(false);
+                            }
+                          }}
+                          style={{ marginTop: 'auto', background: 'linear-gradient(135deg, var(--secondary-accent), var(--primary-accent))', color: '#000' }}
+                        >
+                          {upgradeLoading ? 'Gerando...' : `Assinar ${plano.nome}`}
+                        </button>
+                      )}
+                      {upgradeMsg && <p style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>{upgradeMsg}</p>}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>
