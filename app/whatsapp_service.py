@@ -14,8 +14,9 @@ class WhatsAppService:
                     json={
                         "number": telefone,
                         "text": mensagem,
-                        "key": self.api_key
+                        "delay": 1000
                     },
+                    headers={"apikey": self.api_key},
                     timeout=10
                 )
                 if response.ok:
