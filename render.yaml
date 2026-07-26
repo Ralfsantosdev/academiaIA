@@ -9,9 +9,9 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: FRONTEND_URL
-        value: https://academia-ia-frontend.onrender.com
+        value: https://academiaia-1lfk.onrender.com
       - key: API_BASE_URL
-        value: https://academia-ia-api.onrender.com
+        value: https://academiaia-1lfk.onrender.com
       - key: DATABASE_URL
         fromDatabase:
           name: academia-ia-db
@@ -32,7 +32,7 @@ services:
     staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_URL
-        value: https://academia-ia-api.onrender.com
+        value: https://academiaia-1lfk.onrender.com
 
 databases:
   - name: academia-ia-db
