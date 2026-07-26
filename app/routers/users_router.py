@@ -21,7 +21,7 @@ def create_user(
     current_user: User = Depends(require_role([RoleEnum.ADMIN])) # Apenas ADMIN pode criar usuários livremente
 ):
     # Verifica se o username já está em uso
-    existing_user = db.query(User).filter(User.username == user_in.username).first()
+    existing_user = db.query(User).filter(User.username == user_in.username, User.tenant_id == current_user.tenant_id).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Username já está em uso por outra pessoa")
     
@@ -30,7 +30,8 @@ def create_user(
         username=user_in.username,
         hashed_password=get_password_hash(user_in.password),
         nome=user_in.nome,
-        role=user_in.role
+        role=user_in.role,
+        tenant_id=current_user.tenant_id
     )
     db.add(new_user)
     db.commit()
@@ -48,7 +49,7 @@ def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role([RoleEnum.ADMIN, RoleEnum.RECEP]))
 ):
-    users = db.query(User).all()
+    users = db.query(User).filter(User.tenant_id == current_user.tenant_id).all()
     return [{"id": u.id, "username": u.username, "nome": u.nome, "role": u.role} for u in users]
 
 class UserUpdatePassword(BaseModel):
@@ -61,7 +62,7 @@ def update_user_password(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role([RoleEnum.ADMIN]))
 ):
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == user_id, User.tenant_id == current_user.tenant_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
@@ -75,7 +76,7 @@ def delete_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role([RoleEnum.ADMIN]))
 ):
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == user_id, User.tenant_id == current_user.tenant_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     if user.id == current_user.id:

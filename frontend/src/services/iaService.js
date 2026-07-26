@@ -1,4 +1,6 @@
-export const IA_API_BASE_URL = 'http://localhost:8000/api/v1/ia';
+import { API_BASE_URL } from '../config';
+
+export const IA_API_BASE_URL = `${API_BASE_URL}/api/v1/ia`;
 
 /**
  * Consulta a probabilidade de Churn de um aluno

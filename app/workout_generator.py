@@ -7,6 +7,11 @@ class WorkoutEngine:
     def __init__(self):
         self.api_key = settings.OPENAI_API_KEY
 
+    def _sanitize_error(self, msg: str) -> str:
+        if self.api_key and self.api_key in msg:
+            msg = msg.replace(self.api_key, "sk-***")
+        return msg
+
     def generate(self, objetivo: str, nivel: str, restricoes: List[str], dias_por_semana: int) -> dict:
         if not self.api_key or self.api_key.startswith("sk-proj-xxxx") or self.api_key == "sua-chave-aqui":
             return {
@@ -81,7 +86,7 @@ class WorkoutEngine:
                 try:
                     error_data = e.response.json()
                     if "error" in error_data and "message" in error_data["error"]:
-                        error_msg = error_data["error"]["message"]
+                        error_msg = self._sanitize_error(error_data["error"]["message"])
                 except:
                     pass
                     

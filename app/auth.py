@@ -5,10 +5,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import User, RoleEnum
+from app.models import User, Tenant, RoleEnum
 from app.config import settings
 
-# Constantes de Segurança
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
@@ -37,14 +36,21 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        if username is None:
+        tenant_id: int = payload.get("tenant_id")
+        if username is None or tenant_id is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(User.username == username, User.tenant_id == tenant_id).first()
     if user is None:
         raise credentials_exception
     return user
+
+async def get_current_tenant(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant or not tenant.is_active:
+        raise HTTPException(status_code=403, detail="Conta desativada")
+    return tenant
 
 from typing import List
 

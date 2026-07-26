@@ -1,15 +1,31 @@
+import requests
+from app.config import settings
+
 class WhatsAppService:
+    def __init__(self):
+        self.api_key = settings.WHATSAPP_API_KEY
+        self.api_url = settings.WHATSAPP_API_URL
+
     def enviar_mensagem(self, telefone: str, mensagem: str) -> dict:
-        # Aqui conectaria com a Evolution API, Z-API, Baileys, etc.
-        # Ex: requests.post("http://api-whatsapp/sendText", json={"number": telefone, "text": mensagem})
+        if self.api_key and self.api_key != "sua-chave-evolution-api":
+            try:
+                response = requests.post(
+                    self.api_url,
+                    json={
+                        "number": telefone,
+                        "text": mensagem,
+                        "key": self.api_key
+                    },
+                    timeout=10
+                )
+                if response.ok:
+                    return {"status": "enviado", "telefone": telefone, "api": "evolution"}
+                return {"status": "erro", "detalhe": response.text}
+            except Exception as e:
+                print(f"[WHATSAPP] Erro na API: {e}")
         
-        # Simulação para log do servidor
-        print(f"=====================================")
-        print(f"[WHATSAPP ZAP-BOT] Enviando mensagem...")
-        print(f"Para: {telefone}")
-        print(f"Mensagem: {mensagem}")
-        print(f"=====================================")
-        
-        return {"status": "enviado", "telefone": telefone, "simulado": True}
+        # Fallback para log
+        print(f"[WHATSAPP] Para: {telefone} | Mensagem: {mensagem}")
+        return {"status": "simulado", "telefone": telefone, "simulado": True}
 
 whatsapp_service = WhatsAppService()

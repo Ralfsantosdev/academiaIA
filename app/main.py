@@ -6,7 +6,7 @@ from app.config import settings
 from app.churn_model import churn_service
 from app.workout_generator import workout_service
 from app.database import engine, Base
-from app.routers import auth_router, users_router, alunos_router, planos_router, pagamentos_router, relatorios_router, webhook_router
+from app.routers import auth_router, users_router, alunos_router, planos_router, pagamentos_router, relatorios_router, webhook_router, tenants_router
 
 # Cria as tabelas ao iniciar (se não existirem)
 Base.metadata.create_all(bind=engine)
@@ -21,7 +21,7 @@ app = FastAPI(
 # Configuração de CORS para permitir requisições do Frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Em produção, substitua por domínios específicos, ex: ["https://meu-frontend.com"]
+    allow_origins=[settings.FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,6 +34,7 @@ app.include_router(planos_router.router, prefix="/api/v1")
 app.include_router(pagamentos_router.router, prefix="/api/v1")
 app.include_router(relatorios_router.router, prefix="/api/v1")
 app.include_router(webhook_router.router, prefix="/api/v1")
+app.include_router(tenants_router.router, prefix="/api/v1")
 
 # === DTOs (Schemas de Dados) ===
 
@@ -79,7 +80,7 @@ def predict_churn(payload: ChurnAnalysisRequest):
             **resultado
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Erro interno do servidor")
 
 @app.post(f"{settings.API_PREFIX}/ia/treino/gerar")
 def generate_workout(payload: WorkoutGeneratorRequest):
@@ -95,4 +96,4 @@ def generate_workout(payload: WorkoutGeneratorRequest):
             "prescricao": resultado
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Erro interno do servidor")

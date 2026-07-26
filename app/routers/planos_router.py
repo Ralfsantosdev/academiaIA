@@ -28,11 +28,11 @@ def create_plano(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role([RoleEnum.ADMIN]))
 ):
-    plano_existente = db.query(Plano).filter(Plano.nome == plano_in.nome).first()
+    plano_existente = db.query(Plano).filter(Plano.nome == plano_in.nome, Plano.tenant_id == current_user.tenant_id).first()
     if plano_existente:
         raise HTTPException(status_code=400, detail="Plano já existe")
     
-    novo_plano = Plano(**plano_in.model_dump())
+    novo_plano = Plano(**plano_in.model_dump(), tenant_id=current_user.tenant_id)
     db.add(novo_plano)
     db.commit()
     db.refresh(novo_plano)
@@ -43,7 +43,7 @@ def list_planos(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role([RoleEnum.ADMIN, RoleEnum.RECEP, RoleEnum.ALUNO]))
 ):
-    return db.query(Plano).all()
+    return db.query(Plano).filter(Plano.tenant_id == current_user.tenant_id).all()
 
 @router.delete("/{plano_id}")
 def delete_plano(
@@ -51,7 +51,7 @@ def delete_plano(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role([RoleEnum.ADMIN]))
 ):
-    plano = db.query(Plano).filter(Plano.id == plano_id).first()
+    plano = db.query(Plano).filter(Plano.id == plano_id, Plano.tenant_id == current_user.tenant_id).first()
     if not plano:
         raise HTTPException(status_code=404, detail="Plano não encontrado")
     
