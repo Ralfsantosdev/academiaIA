@@ -414,7 +414,7 @@ function App() {
       setUsersMsg('');
       setCreateMsg('');
     }
-    if (activeTab === 'cadastrar_planos') {
+    if (activeTab === 'cadastrar_planos' || activeTab === 'cadastrar_aluno') {
       authService.getPlanos(token).then(setPlanosList).catch(err => setPlanosMsg(err.message));
     }
     if (activeTab === 'registrar_pagamentos') {
@@ -1156,9 +1156,10 @@ function App() {
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label htmlFor="aluno-plano">Plano Escolhido</label>
                 <select id="aluno-plano" value={novoAluno.plano} onChange={e => setNovoAluno({...novoAluno, plano: e.target.value})} autoComplete="off">
-                  <option value="Mensal">Mensal (R$ 120,00)</option>
-                  <option value="Trimestral">Trimestral (R$ 300,00)</option>
-                  <option value="Anual">Anual (R$ 1.000,00)</option>
+                  <option value="">Selecione um plano</option>
+                  {planosList.map(p => (
+                    <option key={p.id} value={p.nome}>{p.nome} (R$ {p.valor})</option>
+                  ))}
                 </select>
               </div>
 
