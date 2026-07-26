@@ -83,8 +83,9 @@ const authService = {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify(planoData)
     });
-    if (!response.ok) throw new Error('Erro ao criar plano');
-    return response.json();
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Erro ao criar plano');
+    return data;
   },
   getPlanos: async (token) => {
     const response = await fetch(`${API_BASE_URL}/api/v1/planos/`, {
@@ -98,8 +99,11 @@ const authService = {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (!response.ok) throw new Error('Erro ao excluir plano');
-    return response.json();
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.detail || 'Erro ao excluir plano');
+    }
+    return {};
   },
 
   createPagamento: async (pagamentoData, token) => {
