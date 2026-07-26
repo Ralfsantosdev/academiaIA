@@ -9,7 +9,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: FRONTEND_URL
-        value: https://academiaia-1lfk.onrender.com
+        value: https://academia-ia-frontend.onrender.com
       - key: API_BASE_URL
         value: https://academiaia-1lfk.onrender.com
       - key: DATABASE_URL
