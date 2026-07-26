@@ -21,7 +21,13 @@ class Settings:
 
 settings = Settings()
 
-if not settings.SECRET_KEY or settings.SECRET_KEY == "your-secret-key-change-this-in-production":
+_weak_keys = [
+    "your-secret-key-change-this-in-production",
+    "sua-chave-secreta-jwt-aqui",
+    "nova-chave-secreta-jwt-super-segura-12345",
+]
+if not settings.SECRET_KEY or settings.SECRET_KEY in _weak_keys or len(settings.SECRET_KEY) < 16:
     raise ValueError(
-        "SECRET_KEY não configurada. Defina uma chave segura no .env ou variável de ambiente."
+        "SECRET_KEY fraca ou não configurada. Defina uma chave segura (mín. 16 caracteres) "
+        "no .env ou nas variáveis de ambiente."
     )
