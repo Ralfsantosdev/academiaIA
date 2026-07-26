@@ -10,7 +10,7 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 SQLAlchemy==2.0.35
 python-multipart==0.0.12
-mercadopago==2.3.1
+mercadopago==2.3.0
 requests==2.32.3
 openpyxl==3.1.5
 psycopg2-binary==2.9.9
