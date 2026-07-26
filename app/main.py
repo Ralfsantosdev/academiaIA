@@ -1,15 +1,33 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
+import logging
 from app.config import settings
 from app.churn_model import churn_service
 from app.workout_generator import workout_service
-from app.database import engine, Base
+from app.database import engine, Base, SessionLocal
 from app.routers import auth_router, users_router, alunos_router, planos_router, pagamentos_router, relatorios_router, webhook_router, tenants_router
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Cria as tabelas ao iniciar (se não existirem)
 Base.metadata.create_all(bind=engine)
+
+# Semeia dados iniciais se tabela tenants estiver vazia
+from app.models import Tenant
+db = SessionLocal()
+try:
+    if not db.query(Tenant).first():
+        from app.seed import seed_db
+        seed_db()
+        logger.info("Seed data loaded on startup")
+except Exception as e:
+    logger.error("Error loading seed data: %s", e)
+finally:
+    db.close()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -35,6 +53,11 @@ app.include_router(pagamentos_router.router, prefix="/api/v1")
 app.include_router(relatorios_router.router, prefix="/api/v1")
 app.include_router(webhook_router.router, prefix="/api/v1")
 app.include_router(tenants_router.router, prefix="/api/v1")
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.exception("Unhandled error on %s %s", request.method, request.url)
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 # === DTOs (Schemas de Dados) ===
 
