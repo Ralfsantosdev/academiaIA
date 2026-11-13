@@ -45,10 +45,10 @@ Acesse o frontend em `http://localhost:5173` e a API em `http://localhost:8000/d
 
 | Usuário | Senha | Perfil |
 |---------|-------|--------|
-| admin | *** | Administrador |
-| recepcao | *** | Recepcionista |
-| professor | *** | Professor |
-| aluno | 123 | Aluno |
+| admin | **33* | Administrador |
+| recepcao | *33** | Recepcionista |
+| professor | **33* | Professor |
+| aluno | ***### | Aluno |
 
 ## Ambiente
 
