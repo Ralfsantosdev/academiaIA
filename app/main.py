@@ -8,7 +8,7 @@ from app.config import settings
 from app.churn_model import churn_service
 from app.workout_generator import workout_service
 from app.database import engine, Base, SessionLocal
-from app.routers import auth_router, users_router, alunos_router, planos_router, pagamentos_router, relatorios_router, webhook_router, tenants_router
+from app.routers import auth_router, users_router, alunos_router, planos_router, pagamentos_router, relatorios_router, webhook_router, tenants_router, estoque_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -53,6 +53,7 @@ app.include_router(pagamentos_router.router, prefix="/api/v1")
 app.include_router(relatorios_router.router, prefix="/api/v1")
 app.include_router(webhook_router.router, prefix="/api/v1")
 app.include_router(tenants_router.router, prefix="/api/v1")
+app.include_router(estoque_router.router, prefix="/api/v1")
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):

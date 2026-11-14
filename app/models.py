@@ -27,6 +27,7 @@ class Tenant(Base):
     planos = relationship("Plano", back_populates="tenant")
     alunos = relationship("Aluno", back_populates="tenant")
     pagamentos = relationship("Pagamento", back_populates="tenant")
+    produtos = relationship("Produto", back_populates="tenant")
 
 class User(Base):
     __tablename__ = "users"
@@ -94,3 +95,38 @@ class Pagamento(Base):
 
     tenant = relationship("Tenant", back_populates="pagamentos")
     aluno = relationship("Aluno", back_populates="pagamentos")
+
+
+class Produto(Base):
+    __tablename__ = "produtos"
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    nome = Column(String, nullable=False)
+    descricao = Column(String, nullable=True)
+    categoria = Column(String, nullable=True)  # Ex: suplemento, camiseta, acessorio
+    preco_compra = Column(Float, default=0.0)
+    preco_venda = Column(Float, default=0.0)
+    estoque_atual = Column(Integer, default=0)
+    estoque_minimo = Column(Integer, default=5)
+    unidade = Column(String, default="un")  # un, kg, l, etc
+    ativo = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("tenant_id", "nome", name="uq_produto_tenant"),)
+
+    tenant = relationship("Tenant", back_populates="produtos")
+    movimentacoes = relationship("MovimentacaoEstoque", back_populates="produto")
+
+
+class MovimentacaoEstoque(Base):
+    __tablename__ = "movimentacoes_estoque"
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    produto_id = Column(Integer, ForeignKey("produtos.id"), nullable=False)
+    tipo = Column(String, nullable=False)  # "entrada" ou "saida"
+    quantidade = Column(Integer, nullable=False)
+    motivo = Column(String, nullable=True)  # Compra, venda, devolucao, ajuste, perda
+    responsavel = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    produto = relationship("Produto", back_populates="movimentacoes")

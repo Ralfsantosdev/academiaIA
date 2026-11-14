@@ -1,7 +1,24 @@
+import os
+import secrets
+
 from app.database import engine, Base, SessionLocal
 from app.models import User, Aluno, Plano, Tenant, RoleEnum
 from app.auth import get_password_hash
 from datetime import datetime, timedelta
+
+def _initial_password() -> str:
+    password = os.getenv("INITIAL_ADMIN_PASSWORD", "").strip()
+    if not password:
+        password = secrets.token_urlsafe(12)
+        print(
+            "AVISO: INITIAL_ADMIN_PASSWORD não definida; "
+            f"senha gerada apenas para este seed: {password}"
+        )
+    if len(password) < 8:
+        raise ValueError(
+            "INITIAL_ADMIN_PASSWORD deve ter no mínimo 8 caracteres"
+        )
+    return password
 
 def seed_db():
     Base.metadata.create_all(bind=engine)
@@ -9,6 +26,7 @@ def seed_db():
     
     if db.query(User).first() is None:
         print("Semeando banco de dados com usuários iniciais...")
+        password = _initial_password()
         
         tenant = Tenant(
             nome="Academia Padrão",
@@ -37,10 +55,10 @@ def seed_db():
             db.refresh(p)
         
         users = [
-            User(tenant_id=tid, username="admin", hashed_password=get_password_hash("123"), role=RoleEnum.ADMIN, nome="Admin Supremo"),
-            User(tenant_id=tid, username="recepcao", hashed_password=get_password_hash("123"), role=RoleEnum.RECEP, nome="Recepção Central"),
-            User(tenant_id=tid, username="professor", hashed_password=get_password_hash("123"), role=RoleEnum.PROF, nome="Prof. Fernando"),
-            User(tenant_id=tid, username="aluno", hashed_password=get_password_hash("123"), role=RoleEnum.ALUNO, nome="João Aluno")
+            User(tenant_id=tid, username="admin", hashed_password=get_password_hash(password), role=RoleEnum.ADMIN, nome="Admin Supremo"),
+            User(tenant_id=tid, username="recepcao", hashed_password=get_password_hash(password), role=RoleEnum.RECEP, nome="Recepção Central"),
+            User(tenant_id=tid, username="professor", hashed_password=get_password_hash(password), role=RoleEnum.PROF, nome="Prof. Fernando"),
+            User(tenant_id=tid, username="aluno", hashed_password=get_password_hash(password), role=RoleEnum.ALUNO, nome="João Aluno")
         ]
         db.add_all(users)
         db.commit()
@@ -69,7 +87,7 @@ def seed_db():
         user_inad = User(
             tenant_id=tid,
             username="inadimplente",
-            hashed_password=get_password_hash("123"),
+            hashed_password=get_password_hash(password),
             role=RoleEnum.ALUNO,
             nome="Carlos Inadimplente"
         )
@@ -92,8 +110,12 @@ def seed_db():
         db.add(aluno_inad)
         db.commit()
         
-        print("Usuários e planos criados com sucesso! (Senha padrão: '123')")
-        print(f"Tenant padrão: '{tenant.subdomain}' | Login: admin:123")
+        print("Usuários e planos criados com sucesso!")
+        print(
+            f"Tenant padrão: '{tenant.subdomain}' | "
+            f"Logins: admin, recepcao, professor, aluno "
+            f"(senha definida em INITIAL_ADMIN_PASSWORD)"
+        )
     else:
         print("Banco já contém dados.")
     

@@ -338,6 +338,18 @@ function App() {
   const [treinoGerado, setTreinoGerado] = useState(null);
   const [treinoMsg, setTreinoMsg] = useState('');
 
+  // Estados de Estoque
+  const [produtosList, setProdutosList] = useState([]);
+  const [produtoForm, setProdutoForm] = useState({ nome: '', descricao: '', categoria: '', preco_compra: '', preco_venda: '', estoque_atual: '', estoque_minimo: '5', unidade: 'un' });
+  const [produtoMsg, setProdutoMsg] = useState('');
+  const [movimentacaoForm, setMovimentacaoForm] = useState({ produto_id: '', tipo: 'entrada', quantidade: '', motivo: '', responsavel: '' });
+  const [movimentacaoMsg, setMovimentacaoMsg] = useState('');
+  const [movimentacoesList, setMovimentacoesList] = useState([]);
+  const [estoqueResumo, setEstoqueResumo] = useState(null);
+  const [estoqueBaixo, setEstoqueBaixo] = useState([]);
+  const [estoqueBusca, setEstoqueBusca] = useState('');
+  const [estoqueSubTab, setEstoqueSubTab] = useState('produtos');
+
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -450,6 +462,20 @@ function App() {
       }).then(r => r.json()).then(data => setTenantInfo(prev => ({...prev, ...data}))).catch(() => {});
       setUpgradeLink(null);
       setUpgradeMsg('');
+    }
+    if (activeTab === 'estoque') {
+      fetch(`${API_BASE_URL}/api/v1/estoque/produtos`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(r => r.json()).then(setProdutosList).catch(() => {});
+      fetch(`${API_BASE_URL}/api/v1/estoque/resumo`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(r => r.json()).then(setEstoqueResumo).catch(() => {});
+      fetch(`${API_BASE_URL}/api/v1/estoque/baixo-estoque`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(r => r.json()).then(setEstoqueBaixo).catch(() => {});
+      fetch(`${API_BASE_URL}/api/v1/estoque/movimentacoes`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(r => r.json()).then(setMovimentacoesList).catch(() => {});
     }
   }, [activeTab, user]);
 
@@ -1068,6 +1094,10 @@ function App() {
             <div className={`menu-item ${activeTab === 'registrar_pagamentos' ? 'highlight-menu' : ''}`} onClick={() => setActiveTab('registrar_pagamentos')}>💰 Registrar Pagamentos</div>
           )}
 
+          {(role === 'administrador' || role === 'recepcionista') && (
+            <div className={`menu-item ${activeTab === 'estoque' ? 'highlight-menu' : ''}`} onClick={() => setActiveTab('estoque')}>📦 Estoque</div>
+          )}
+
           {(role === 'administrador' || role === 'recepcionista' || role === 'professor') && (
             <div className={`menu-item ${activeTab === 'consultar_aluno' ? 'highlight-menu' : ''}`} onClick={() => setActiveTab('consultar_aluno')}>🔍 Consultar Aluno</div>
           )}
@@ -1667,6 +1697,292 @@ function App() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'estoque' && (
+          <section className="glass-panel">
+            <h2 className="panel-title">📦 Gestão de Estoque</h2>
+            <p style={{ marginBottom: '1.5rem' }}>Controle de produtos, suplementos e materiais da academia.</p>
+
+            {/* Resumo */}
+            {estoqueResumo && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                <div style={{ padding: '1.2rem', background: 'rgba(102,252,241,0.1)', borderRadius: '10px', textAlign: 'center' }}>
+                  <h4 style={{ color: 'var(--primary-accent)', fontSize: '0.85rem', marginBottom: '0.3rem' }}>Total Produtos</h4>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>{estoqueResumo.total_produtos}</div>
+                </div>
+                <div style={{ padding: '1.2rem', background: 'rgba(100,255,100,0.1)', borderRadius: '10px', textAlign: 'center' }}>
+                  <h4 style={{ color: 'var(--success)', fontSize: '0.85rem', marginBottom: '0.3rem' }}>Valor em Estoque</h4>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>R$ {estoqueResumo.valor_total_estoque.toFixed(2)}</div>
+                </div>
+                <div style={{ padding: '1.2rem', background: 'rgba(255,100,100,0.1)', borderRadius: '10px', textAlign: 'center' }}>
+                  <h4 style={{ color: 'var(--danger)', fontSize: '0.85rem', marginBottom: '0.3rem' }}>Estoque Baixo</h4>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: estoqueResumo.produtos_baixo_estoque > 0 ? 'var(--danger)' : 'var(--success)' }}>{estoqueResumo.produtos_baixo_estoque}</div>
+                </div>
+                <div style={{ padding: '1.2rem', background: 'rgba(255,200,0,0.1)', borderRadius: '10px', textAlign: 'center' }}>
+                  <h4 style={{ color: 'var(--warning)', fontSize: '0.85rem', marginBottom: '0.3rem' }}>Zerados</h4>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: estoqueResumo.produtos_zerados > 0 ? 'var(--warning)' : 'var(--success)' }}>{estoqueResumo.produtos_zerados}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-abas */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(102,252,241,0.2)', paddingBottom: '1rem' }}>
+              {['produtos', 'movimentacoes', 'alertas'].map(tab => (
+                <button key={tab} onClick={() => setEstoqueSubTab(tab)} style={{
+                  padding: '0.5rem 1.2rem', fontSize: '0.9rem',
+                  background: estoqueSubTab === tab ? 'var(--primary-accent)' : 'transparent',
+                  color: estoqueSubTab === tab ? '#000' : 'var(--text-main)',
+                  border: estoqueSubTab === tab ? 'none' : '1px solid rgba(102,252,241,0.3)'
+                }}>
+                  {tab === 'produtos' ? '📋 Produtos' : tab === 'movimentacoes' ? '🔄 Movimentações' : '⚠️ Alertas'}
+                </button>
+              ))}
+            </div>
+
+            {/* Sub-aba: Produtos */}
+            {estoqueSubTab === 'produtos' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                <div>
+                  <h3 style={{ marginBottom: '1rem', color: 'var(--primary-accent)' }}>Cadastrar Produto</h3>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    setProdutoMsg('');
+                    try {
+                      const token = localStorage.getItem('token');
+                      const res = await fetch(`${API_BASE_URL}/api/v1/estoque/produtos`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({
+                          ...produtoForm,
+                          preco_compra: parseFloat(produtoForm.preco_compra) || 0,
+                          preco_venda: parseFloat(produtoForm.preco_venda) || 0,
+                          estoque_atual: parseInt(produtoForm.estoque_atual) || 0,
+                          estoque_minimo: parseInt(produtoForm.estoque_minimo) || 5
+                        })
+                      });
+                      if (!res.ok) { const d = await res.json(); throw new Error(d.detail); }
+                      setProdutoMsg('✅ Produto cadastrado com sucesso!');
+                      setProdutoForm({ nome: '', descricao: '', categoria: '', preco_compra: '', preco_venda: '', estoque_atual: '', estoque_minimo: '5', unidade: 'un' });
+                      const token2 = localStorage.getItem('token');
+                      fetch(`${API_BASE_URL}/api/v1/estoque/produtos`, { headers: { 'Authorization': `Bearer ${token2}` } }).then(r => r.json()).then(setProdutosList);
+                      fetch(`${API_BASE_URL}/api/v1/estoque/resumo`, { headers: { 'Authorization': `Bearer ${token2}` } }).then(r => r.json()).then(setEstoqueResumo);
+                      fetch(`${API_BASE_URL}/api/v1/estoque/baixo-estoque`, { headers: { 'Authorization': `Bearer ${token2}` } }).then(r => r.json()).then(setEstoqueBaixo);
+                    } catch (err) { setProdutoMsg(`❌ ${err.message}`); }
+                  }} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="prod-nome">Nome do Produto *</label>
+                      <input id="prod-nome" type="text" value={produtoForm.nome} onChange={e => setProdutoForm({...produtoForm, nome: e.target.value})} placeholder="Ex: Whey Protein 1kg" required autoComplete="off" />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="prod-desc">Descrição</label>
+                      <input id="prod-desc" type="text" value={produtoForm.descricao} onChange={e => setProdutoForm({...produtoForm, descricao: e.target.value})} placeholder="Descrição opcional" autoComplete="off" />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="prod-categ">Categoria</label>
+                      <select id="prod-categ" value={produtoForm.categoria} onChange={e => setProdutoForm({...produtoForm, categoria: e.target.value})} autoComplete="off">
+                        <option value="">Selecione</option>
+                        <option value="Suplemento">Suplemento</option>
+                        <option value="Vestimenta">Vestimenta</option>
+                        <option value="Acessorio">Acessório</option>
+                        <option value="Bebida">Bebida</option>
+                        <option value="Limpeza">Limpeza</option>
+                        <option value="Outro">Outro</option>
+                      </select>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor="prod-comp">Preço Compra (R$)</label>
+                        <input id="prod-comp" type="number" step="0.01" value={produtoForm.preco_compra} onChange={e => setProdutoForm({...produtoForm, preco_compra: e.target.value})} placeholder="0.00" autoComplete="off" />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor="prod-venda">Preço Venda (R$)</label>
+                        <input id="prod-venda" type="number" step="0.01" value={produtoForm.preco_venda} onChange={e => setProdutoForm({...produtoForm, preco_venda: e.target.value})} placeholder="0.00" autoComplete="off" />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.8rem' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor="prod-qtd">Estoque Atual</label>
+                        <input id="prod-qtd" type="number" value={produtoForm.estoque_atual} onChange={e => setProdutoForm({...produtoForm, estoque_atual: e.target.value})} placeholder="0" autoComplete="off" />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor="prod-min">Estoque Mínimo</label>
+                        <input id="prod-min" type="number" value={produtoForm.estoque_minimo} onChange={e => setProdutoForm({...produtoForm, estoque_minimo: e.target.value})} placeholder="5" autoComplete="off" />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor="prod-unid">Unidade</label>
+                        <select id="prod-unid" value={produtoForm.unidade} onChange={e => setProdutoForm({...produtoForm, unidade: e.target.value})} autoComplete="off">
+                          <option value="un">Unidade</option>
+                          <option value="kg">Quilograma</option>
+                          <option value="l">Litro</option>
+                          <option value="cx">Caixa</option>
+                          <option value="pct">Pacote</option>
+                        </select>
+                      </div>
+                    </div>
+                    <button type="submit">Cadastrar Produto</button>
+                    {produtoMsg && <div style={{ padding: '0.8rem', borderRadius: '6px', background: 'rgba(0,0,0,0.4)', color: produtoMsg.includes('✅') ? 'var(--success)' : 'var(--danger)', fontSize: '0.9rem' }}>{produtoMsg}</div>}
+                  </form>
+                </div>
+
+                <div>
+                  <h3 style={{ marginBottom: '1rem', color: 'var(--primary-accent)' }}>Produtos Cadastrados</h3>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <input type="text" placeholder="Buscar produto..." value={estoqueBusca} onChange={e => setEstoqueBusca(e.target.value)} style={{ width: '100%' }} autoComplete="off" />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '500px', overflowY: 'auto' }}>
+                    {produtosList.filter(p => !estoqueBusca || p.nome.toLowerCase().includes(estoqueBusca.toLowerCase())).map(p => (
+                      <div key={p.id} style={{ padding: '1rem', border: '1px solid rgba(102,252,241,0.3)', borderRadius: '8px', background: p.estoque_atual <= p.estoque_minimo ? 'rgba(255,100,100,0.08)' : 'rgba(0,0,0,0.2)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <strong>{p.nome}</strong>
+                            {p.categoria && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({p.categoria})</span>}
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                              Compra: R$ {p.preco_compra.toFixed(2)} | Venda: R$ {p.preco_venda.toFixed(2)}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: p.estoque_atual <= p.estoque_minimo ? 'var(--danger)' : 'var(--success)' }}>
+                              {p.estoque_atual} <span style={{ fontSize: '0.8rem', fontWeight: 'normal', color: 'var(--text-muted)' }}>{p.unidade}</span>
+                            </div>
+                            {p.estoque_atual <= p.estoque_minimo && <span style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>Estoque baixo!</span>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {produtosList.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>Nenhum produto cadastrado.</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-aba: Movimentações */}
+            {estoqueSubTab === 'movimentacoes' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                <div>
+                  <h3 style={{ marginBottom: '1rem', color: 'var(--primary-accent)' }}>Registrar Movimentação</h3>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    setMovimentacaoMsg('');
+                    try {
+                      const token = localStorage.getItem('token');
+                      const res = await fetch(`${API_BASE_URL}/api/v1/estoque/movimentacoes`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({
+                          ...movimentacaoForm,
+                          produto_id: parseInt(movimentacaoForm.produto_id),
+                          quantidade: parseInt(movimentacaoForm.quantidade)
+                        })
+                      });
+                      if (!res.ok) { const d = await res.json(); throw new Error(d.detail); }
+                      setMovimentacaoMsg('✅ Movimentação registrada com sucesso!');
+                      setMovimentacaoForm({ produto_id: '', tipo: 'entrada', quantidade: '', motivo: '', responsavel: '' });
+                      const token2 = localStorage.getItem('token');
+                      fetch(`${API_BASE_URL}/api/v1/estoque/produtos`, { headers: { 'Authorization': `Bearer ${token2}` } }).then(r => r.json()).then(setProdutosList);
+                      fetch(`${API_BASE_URL}/api/v1/estoque/movimentacoes`, { headers: { 'Authorization': `Bearer ${token2}` } }).then(r => r.json()).then(setMovimentacoesList);
+                      fetch(`${API_BASE_URL}/api/v1/estoque/resumo`, { headers: { 'Authorization': `Bearer ${token2}` } }).then(r => r.json()).then(setEstoqueResumo);
+                      fetch(`${API_BASE_URL}/api/v1/estoque/baixo-estoque`, { headers: { 'Authorization': `Bearer ${token2}` } }).then(r => r.json()).then(setEstoqueBaixo);
+                    } catch (err) { setMovimentacaoMsg(`❌ ${err.message}`); }
+                  }} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="mov-produto">Produto *</label>
+                      <select id="mov-produto" value={movimentacaoForm.produto_id} onChange={e => setMovimentacaoForm({...movimentacaoForm, produto_id: e.target.value})} required autoComplete="off">
+                        <option value="">Selecione o produto</option>
+                        {produtosList.map(p => (
+                          <option key={p.id} value={p.id}>{p.nome} (Estoque: {p.estoque_atual} {p.unidade})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor="mov-tipo">Tipo *</label>
+                        <select id="mov-tipo" value={movimentacaoForm.tipo} onChange={e => setMovimentacaoForm({...movimentacaoForm, tipo: e.target.value})} autoComplete="off">
+                          <option value="entrada">Entrada (+)</option>
+                          <option value="saida">Saída (-)</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor="mov-qtd">Quantidade *</label>
+                        <input id="mov-qtd" type="number" min="1" value={movimentacaoForm.quantidade} onChange={e => setMovimentacaoForm({...movimentacaoForm, quantidade: e.target.value})} required autoComplete="off" />
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="mov-motivo">Motivo</label>
+                      <select id="mov-motivo" value={movimentacaoForm.motivo} onChange={e => setMovimentacaoForm({...movimentacaoForm, motivo: e.target.value})} autoComplete="off">
+                        <option value="">Selecione</option>
+                        <option value="Compra">Compra</option>
+                        <option value="Venda">Venda</option>
+                        <option value="Devolução">Devolução</option>
+                        <option value="Ajuste">Ajuste de Estoque</option>
+                        <option value="Perda">Perda/Avaria</option>
+                        <option value="Uso Interno">Uso Interno</option>
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="mov-resp">Responsável</label>
+                      <input id="mov-resp" type="text" value={movimentacaoForm.responsavel} onChange={e => setMovimentacaoForm({...movimentacaoForm, responsavel: e.target.value})} placeholder="Nome de quem fez a movimentação" autoComplete="off" />
+                    </div>
+                    <button type="submit" style={{ background: movimentacaoForm.tipo === 'entrada' ? 'var(--success)' : 'var(--danger)', color: '#000' }}>
+                      {movimentacaoForm.tipo === 'entrada' ? 'Registrar Entrada' : 'Registrar Saída'}
+                    </button>
+                    {movimentacaoMsg && <div style={{ padding: '0.8rem', borderRadius: '6px', background: 'rgba(0,0,0,0.4)', color: movimentacaoMsg.includes('✅') ? 'var(--success)' : 'var(--danger)', fontSize: '0.9rem' }}>{movimentacaoMsg}</div>}
+                  </form>
+                </div>
+
+                <div>
+                  <h3 style={{ marginBottom: '1rem', color: 'var(--primary-accent)' }}>Últimas Movimentações</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '500px', overflowY: 'auto' }}>
+                    {movimentacoesList.map(m => (
+                      <div key={m.id} style={{ padding: '0.8rem', border: '1px solid rgba(102,252,241,0.2)', borderRadius: '8px', background: m.tipo === 'entrada' ? 'rgba(0,255,0,0.05)' : 'rgba(255,0,0,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <strong>{m.produto_nome}</strong>
+                            {m.motivo && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({m.motivo})</span>}
+                            {m.responsavel && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Resp: {m.responsavel}</div>}
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: m.tipo === 'entrada' ? 'var(--success)' : 'var(--danger)' }}>
+                              {m.tipo === 'entrada' ? '+' : '-'}{m.quantidade}
+                            </span>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(m.created_at).toLocaleString('pt-BR')}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {movimentacoesList.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>Nenhuma movimentação registrada.</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-aba: Alertas */}
+            {estoqueSubTab === 'alertas' && (
+              <div>
+                <h3 style={{ marginBottom: '1rem', color: 'var(--danger)' }}>⚠️ Produtos com Estoque Baixo</h3>
+                {estoqueBaixo.length === 0 ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', background: 'rgba(0,255,0,0.05)', borderRadius: '12px', border: '1px solid rgba(0,255,0,0.2)' }}>
+                    <p style={{ color: 'var(--success)', fontSize: '1.1rem' }}>✅ Todos os produtos com estoque adequado!</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                    {estoqueBaixo.map(p => (
+                      <div key={p.id} style={{ padding: '1rem', border: '1px solid rgba(255,100,100,0.4)', borderRadius: '8px', background: 'rgba(255,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <strong style={{ color: 'var(--danger)' }}>{p.nome}</strong>
+                          {p.categoria && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({p.categoria})</span>}
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--danger)' }}>{p.estoque_atual} {p.unidade}</span>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mínimo: {p.estoque_minimo}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </section>

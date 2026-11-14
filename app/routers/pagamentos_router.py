@@ -128,7 +128,7 @@ def gerar_link_assinatura(
         req.aluno_cpf, 
         req.nome_plano, 
         req.valor,
-        external_reference=req.aluno_cpf
+        external_reference=f"payment_{current_user.tenant_id}_{req.aluno_cpf}"
     )
     return {
         "link": link,

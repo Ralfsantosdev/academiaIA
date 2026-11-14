@@ -43,12 +43,16 @@ Acesse o frontend em `http://localhost:5173` e a API em `http://localhost:8000/d
 
 ## Usuários de Teste
 
+O seed cria os usuários abaixo com a senha definida em `INITIAL_ADMIN_PASSWORD`
+(no `.env`). Se a variável não estiver definida, o seed gera uma senha aleatória
+e imprime uma única vez no log.
+
 | Usuário | Senha | Perfil |
 |---------|-------|--------|
-| admin | **33* | Administrador |
-| recepcao | *33** | Recepcionista |
-| professor | **33* | Professor |
-| aluno | ***### | Aluno |
+| admin | `INITIAL_ADMIN_PASSWORD` | Administrador |
+| recepcao | `INITIAL_ADMIN_PASSWORD` | Recepcionista |
+| professor | `INITIAL_ADMIN_PASSWORD` | Professor |
+| aluno | `INITIAL_ADMIN_PASSWORD` | Aluno |
 
 ## Ambiente
 
@@ -58,6 +62,7 @@ Copie o `.env.example` para `.env` e configure as chaves:
 OPENAI_API_KEY="sk-sua-chave-aqui"
 MERCADOPAGO_ACCESS_TOKEN="seu-token-aqui"
 SECRET_KEY="sua-chave-secreta-jwt"
+INITIAL_ADMIN_PASSWORD="uma-senha-forte-min-8"
 ```
 
 ## Estrutura

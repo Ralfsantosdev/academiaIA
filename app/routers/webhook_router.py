@@ -56,28 +56,42 @@ async def mercadopago_webhook(request: Request, background_tasks: BackgroundTask
                         tenant.is_active = 1
                         db.commit()
                         logger.info("Upgrade ativado: tenant %d -> %s", tenant_id, plano_slug)
-        else:
-            aluno = db.query(Aluno).filter(Aluno.cpf == external_ref).first()
-            if aluno:
-                pagamento = Pagamento(
-                    aluno_id=aluno.id,
-                    valor=valor,
-                    status="Pago",
-                    data_pagamento=datetime.utcnow()
-                )
-                db.add(pagamento)
+        elif external_ref.startswith("payment_"):
+            parts = external_ref.split("_", 2)
+            if len(parts) == 3:
+                _, tenant_id_str, aluno_cpf = parts
+                try:
+                    tenant_id = int(tenant_id_str)
+                except ValueError:
+                    logger.warning("tenant_id invalido em external_ref: %s", external_ref)
+                    return {"status": "recebido", "message": "external_ref invalido"}
 
-                aluno.faturas_atrasadas = 0
-                aluno.plano_ativo = 1
-                aluno.data_inicio_plano = datetime.utcnow()
+                aluno = db.query(Aluno).filter(
+                    Aluno.cpf == aluno_cpf, Aluno.tenant_id == tenant_id
+                ).first()
+                if aluno:
+                    pagamento = Pagamento(
+                        aluno_id=aluno.id,
+                        valor=valor,
+                        status="Pago",
+                        data_pagamento=datetime.utcnow(),
+                        tenant_id=tenant_id,
+                    )
+                    db.add(pagamento)
 
-                if aluno.plano_id:
-                    plano = db.query(Plano).filter(Plano.id == aluno.plano_id).first()
-                    if plano:
-                        aluno.data_expiracao_plano = datetime.utcnow() + timedelta(days=30 * plano.duracao_meses)
+                    aluno.faturas_atrasadas = 0
+                    aluno.plano_ativo = 1
+                    aluno.data_inicio_plano = datetime.utcnow()
 
-                db.commit()
-                logger.info("Plano ativado para aluno %s", aluno.cpf)
+                    if aluno.plano_id:
+                        plano = db.query(Plano).filter(
+                            Plano.id == aluno.plano_id, Plano.tenant_id == tenant_id
+                        ).first()
+                        if plano:
+                            aluno.data_expiracao_plano = datetime.utcnow() + timedelta(days=30 * plano.duracao_meses)
+
+                    db.commit()
+                    logger.info("Plano ativado para aluno %s (tenant %d)", aluno_cpf, tenant_id)
 
     return {"status": "recebido", "message": "Pagamento processado em background"}
 
